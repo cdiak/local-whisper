@@ -20,6 +20,219 @@ while allowing users to choose between:
 - Improved error handling, temporary file management, and TypeScript correctness
 - Added clear licensing and attribution notes for fork modifications
 
+---
+
+You can now choose between:
+
+* **Remote transcription using OpenAI Whisper API**, or
+* **Local transcription using whisper.cpp** (fast, private, offline)
+
+---
+
+# 🔧 **About This Fork**
+
+This fork introduces the following features:
+
+### 🏎️ **Local Whisper.cpp Backend**
+
+* Fully offline transcription via `whisper-cli`
+* GPU acceleration through Metal on Apple Silicon
+* Supports ggml/gguf Whisper models (`tiny`, `base`, `small`, `medium`, `large-v3`)
+
+### 🎚️ **Backend Selector (Remote ↔ Local)**
+
+Switch between:
+
+* **Remote Whisper API**
+* **Local whisper.cpp**
+
+in Settings without changing how you use the plugin.
+
+### 🔩 **New Local Backend Settings**
+
+* **Local model path:** path to `ggml`/`gguf` Whisper model
+* **whisper-cli binary path**
+* **ffmpeg binary path**
+* Automatic WAV normalization from webm/m4a → 16 kHz PCM
+
+### 🔄 **Unified UX**
+
+Recording, uploading, creating notes, inserting transcriptions, and file-saving behavior all remain identical regardless of backend.
+
+---
+
+# 🚀 **Getting Started**
+
+## Installing the Plugin (Fork)
+
+Clone or download this repository into:
+
+```
+<your-vault>/.obsidian/plugins/local-whisper
+```
+
+Or use a symlink for development:
+
+```bash
+cd <vault>/.obsidian/plugins
+ln -s /Users/<you>/Development/Projects/local-whisper local-whisper
+```
+
+Reload plugins inside Obsidian.
+
+---
+
+# 🎛️ **Installing a Local Whisper Model (whisper.cpp)**
+
+To use the **Local whisper.cpp backend**, you must install a Whisper model in the
+correct format (`ggml` or `gguf`). PyTorch `.pt` models will not work.
+
+Here is the exact macOS setup we used in development:
+
+---
+
+## 1. Create a Stable Model Directory (No Spaces in Path)
+
+```bash
+mkdir -p ~/models/whisper
+```
+
+---
+
+## 2. Download a Model Using whisper.cpp’s Script (Recommended)
+
+Clone whisper.cpp:
+
+```bash
+git clone https://github.com/ggml-org/whisper.cpp.git
+cd whisper.cpp
+```
+
+Download a model:
+
+```bash
+sh ./models/download-ggml-model.sh base.en
+```
+
+Move it into your stable directory:
+
+```bash
+mv ./models/ggml-base.en.bin ~/models/whisper/ggml-base.en.bin
+```
+
+Verify (size should be ~140 MB):
+
+```bash
+ls -lh ~/models/whisper
+```
+
+---
+
+## 3. Alternate Method: HuggingFace Direct Download
+
+```bash
+cd ~/models/whisper
+curl -L -o ggml-base.en.bin \
+  https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-base.en.bin?download=1
+```
+
+**If the file is only a few KB, the download failed.**
+Retry or use the whisper.cpp script.
+
+---
+
+## 4. Configure the Plugin
+
+In **Settings → Local Whisper Backend**:
+
+#### Local Whisper Model Path
+
+```
+/Users/<you>/models/whisper/ggml-base.en.bin
+```
+
+#### whisper-cli Binary
+
+```
+/opt/homebrew/bin/whisper-cli
+```
+
+(Install via Homebrew:
+`brew install whisper-cpp`)
+
+#### ffmpeg Binary
+
+```
+/opt/homebrew/bin/ffmpeg
+```
+
+(Install via Homebrew:
+`brew install ffmpeg`)
+
+---
+
+## 5. Common Setup Pitfalls
+
+* **Model must be ggml/gguf**, not PyTorch `.pt`
+* **Avoid spaces in paths** (whisper-cli fails inside Electron execFile)
+* **Model must be large** (e.g., 140 MB for base.en)
+* **MediaRecorder outputs webm/m4a**, not WAV → ffmpeg needed
+* **Verify whisper-cli runs from Terminal** before testing in Obsidian
+
+---
+
+## 6. Test whisper-cli Manually
+
+```bash
+whisper-cli \
+  -m ~/models/whisper/ggml-base.en.bin \
+  -f <path-to-wav-file> \
+  -otxt
+```
+
+If this works, the plugin will work.
+
+---
+
+## 7. Try Other Models
+
+You can use:
+
+* `ggml-small.en.gguf`
+* `ggml-medium.en.gguf`
+* `ggml-large-v3.gguf`
+
+Place them in `~/models/whisper` and update your Settings path.
+
+---
+
+Original plugin © 2023 by **Nik Danilov**.
+Local backend, refactor, and enhancements © 2025 **Christopher Diak**.
+
+---
+
+# ⚒️ Manual Installation (Plugin Files)
+
+Download:
+
+* `manifest.json`
+* `main.js`
+* `styles.css`
+
+Place them into:
+
+```
+<your-vault>/.obsidian/plugins/local-whisper/
+```
+
+Reload plugins.
+
+---
+
+* Whisper Recorder by **Nik Danilov**
+* whisper.cpp by **ggerganov**
+* Local backend architecture and refactor by **Christopher Diak**
+
 The remainder of this README is preserved from the original plugin for reference.
 
 # Speech-to-text in Obsidian using OpenAI Whisper 🗣️📝
