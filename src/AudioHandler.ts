@@ -1,118 +1,158 @@
 import axios from "axios";
 import Whisper from "main";
-import { Notice, MarkdownView } from "obsidian";
+import { Notice, MarkdownView, TFile } from "obsidian";
 import { getBaseFileName } from "./utils";
+import { LocalWhisperBackend } from "./LocalWhisperBackend";
 
 export class AudioHandler {
 	private plugin: Whisper;
+	private localBackend: LocalWhisperBackend;
 
 	constructor(plugin: Whisper) {
 		this.plugin = plugin;
+		this.localBackend = new LocalWhisperBackend(plugin);
 	}
 
 	async sendAudioData(blob: Blob, fileName: string): Promise<void> {
-		// Get the base file name without extension
+		const settings = this.plugin.settings;
 		const baseFileName = getBaseFileName(fileName);
 
+		// Construct audio + note paths
 		const audioFilePath = `${
-			this.plugin.settings.saveAudioFilePath
-				? `${this.plugin.settings.saveAudioFilePath}/`
+			settings.saveAudioFilePath
+				? `${settings.saveAudioFilePath}/`
 				: ""
 		}${fileName}`;
 
 		const noteFilePath = `${
-			this.plugin.settings.createNewFileAfterRecordingPath
-				? `${this.plugin.settings.createNewFileAfterRecordingPath}/`
+			settings.createNewFileAfterRecordingPath
+				? `${settings.createNewFileAfterRecordingPath}/`
 				: ""
 		}${baseFileName}.md`;
 
-		if (this.plugin.settings.debugMode) {
-			new Notice(`Sending audio data size: ${blob.size / 1000} KB`);
+		// Debug notice
+		if (settings.debugMode) {
+			new Notice(`Audio size: ${(blob.size / 1000).toFixed(1)} KB`);
 		}
 
-		if (!this.plugin.settings.apiKey) {
-			new Notice(
-				"API key is missing. Please add your API key in the settings."
-			);
-			return;
-		}
-
-		const formData = new FormData();
-		formData.append("file", blob, fileName);
-		formData.append("model", this.plugin.settings.model);
-		formData.append("language", this.plugin.settings.language);
-		if (this.plugin.settings.prompt)
-			formData.append("prompt", this.plugin.settings.prompt);
-
+		// ------------------------------
+		// SAVE AUDIO FILE IF CONFIGURED
+		// ------------------------------
 		try {
-			// If the saveAudioFile setting is true, save the audio file
-			if (this.plugin.settings.saveAudioFile) {
+			if (settings.saveAudioFile) {
 				const arrayBuffer = await blob.arrayBuffer();
 				await this.plugin.app.vault.adapter.writeBinary(
 					audioFilePath,
-					new Uint8Array(arrayBuffer)
+					arrayBuffer
 				);
-				new Notice("Audio saved successfully.");
+				if (settings.debugMode) new Notice("Audio saved.");
 			}
-		} catch (err) {
+		} catch (err: any) {
 			console.error("Error saving audio file:", err);
-			new Notice("Error saving audio file: " + err.message);
+			new Notice("Error saving audio: " + err.message);
 		}
 
+		// ------------------------------
+		// CHOOSE BACKEND
+		// ------------------------------
+		let transcript = "";
+
 		try {
-			if (this.plugin.settings.debugMode) {
-				new Notice("Parsing audio data:" + fileName);
-			}
-			const response = await axios.post(
-				this.plugin.settings.apiUrl,
-				formData,
-				{
+			if (settings.backend === "local") {
+				// Use local whisper.cpp backend
+				if (settings.debugMode) {
+					new Notice("Using local whisper.cpp backend…");
+				}
+				transcript = await this.localBackend.transcribe(blob, fileName);
+
+			} else {
+				// ------------------------------
+				// REMOTE BACKEND (existing behavior)
+				// ------------------------------
+
+				if (!settings.apiKey) {
+					new Notice("API key missing in settings.");
+					return;
+				}
+
+				if (settings.debugMode) {
+					new Notice("Uploading audio to remote API…");
+				}
+
+				const formData = new FormData();
+				formData.append("file", blob, fileName);
+				formData.append("model", settings.model);
+				formData.append("language", settings.language);
+				if (settings.prompt) formData.append("prompt", settings.prompt);
+
+				const response = await axios.post(settings.apiUrl, formData, {
 					headers: {
 						"Content-Type": "multipart/form-data",
-						Authorization: `Bearer ${this.plugin.settings.apiKey}`,
+						Authorization: `Bearer ${settings.apiKey}`,
 					},
-				}
-			);
+				});
 
-			// Determine if a new file should be created
-			const activeView =
-				this.plugin.app.workspace.getActiveViewOfType(MarkdownView);
-			const shouldCreateNewFile =
-				this.plugin.settings.createNewFileAfterRecording || !activeView;
+				// Extract text from API response
+				transcript =
+					response.data.text ||
+					response.data.result ||
+					response.data.results?.[0]?.text ||
+					"";
+			}
+		} catch (err: any) {
+			console.error("Error transcribing audio:", err);
+			new Notice("Error transcribing audio: " + err.message);
+			return;
+		}
 
+		if (!transcript) {
+			new Notice("No transcription returned.");
+			return;
+		}
+
+		// ------------------------------
+		// INSERT TRANSCRIPTION INTO NOTE
+		// ------------------------------
+
+		const { app } = this.plugin;
+		const { vault, workspace } = app;
+
+		const activeView =
+			workspace.getActiveViewOfType(MarkdownView);
+
+		const shouldCreateNewFile =
+			settings.createNewFileAfterRecording || !activeView;
+
+		try {
 			if (shouldCreateNewFile) {
-				await this.plugin.app.vault.create(
-					noteFilePath,
-					`![[${audioFilePath}]]\n${response.data.text}`
-				);
-				await this.plugin.app.workspace.openLinkText(
-					noteFilePath,
-					"",
-					true
-				);
-			} else {
-				// Insert the transcription at the cursor position
-				const editor =
-					this.plugin.app.workspace.getActiveViewOfType(
-						MarkdownView
-					)?.editor;
-				if (editor) {
-					const cursorPosition = editor.getCursor();
-					editor.replaceRange(response.data.text, cursorPosition);
+				// Create new note and embed audio (if saved)
+				const contents = settings.saveAudioFile
+					? `![[${audioFilePath}]]\n${transcript}`
+					: transcript;
 
-					// Move the cursor to the end of the inserted text
-					const newPosition = {
-						line: cursorPosition.line,
-						ch: cursorPosition.ch + response.data.text.length,
-					};
-					editor.setCursor(newPosition);
+				await vault.create(noteFilePath, contents);
+				await workspace.openLinkText(noteFilePath, "", true);
+
+			} else {
+				// Insert transcription at cursor
+				const editor =
+					workspace.getActiveViewOfType(MarkdownView)?.editor;
+
+				if (editor) {
+					const cursor = editor.getCursor();
+					editor.replaceRange(transcript, cursor);
+
+					editor.setCursor({
+						line: cursor.line,
+						ch: cursor.ch + transcript.length,
+					});
 				}
 			}
 
 			new Notice("Audio parsed successfully.");
-		} catch (err) {
-			console.error("Error parsing audio:", err);
-			new Notice("Error parsing audio: " + err.message);
+		} catch (err: any) {
+			console.error("Error inserting transcript:", err);
+			new Notice("Error inserting transcript: " + err.message);
 		}
 	}
 }
