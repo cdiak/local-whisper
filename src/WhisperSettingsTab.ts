@@ -19,34 +19,56 @@ export class WhisperSettingsTab extends PluginSettingTab {
 
 		containerEl.empty();
 		this.createHeader();
-		this.createApiKeySetting();
-		this.createApiUrlSetting();
-		this.createModelSetting();
-		this.createPromptSetting();
-		this.createLanguageSetting();
+
+		// ----------------------------------
+		// BACKEND SELECTOR
+		// ----------------------------------
+		this.createBackendSelector();
+
+		// ----------------------------------
+		// REMOTE API SETTINGS
+		// ----------------------------------
+		if (this.plugin.settings.backend === "remote") {
+			this.createApiKeySetting();
+			this.createApiUrlSetting();
+			this.createModelSetting();
+			this.createPromptSetting();
+			this.createLanguageSetting();
+		}
+
+		// ----------------------------------
+		// LOCAL WHISPER SETTINGS
+		// ----------------------------------
+		if (this.plugin.settings.backend === "local") {
+			this.createLocalModelPathSetting();
+			this.createLocalBinaryPathSetting();
+			this.createFFmpegPathSetting();
+		}
+
+		// ----------------------------------
+		// SAVE AUDIO
+		// ----------------------------------
 		this.createSaveAudioFileToggleSetting();
 		this.createSaveAudioFilePathSetting();
+
+		// ----------------------------------
+		// SAVE TRANSCRIPTIONS
+		// ----------------------------------
 		this.createNewFileToggleSetting();
 		this.createNewFilePathSetting();
+
+		// ----------------------------------
+		// DEBUG MODE
+		// ----------------------------------
 		this.createDebugModeToggleSetting();
 	}
 
-	private getUniqueFolders(): TFolder[] {
-		const files = this.app.vault.getMarkdownFiles();
-		const folderSet = new Set<TFolder>();
-
-		for (const file of files) {
-			const parentFolder = file.parent;
-			if (parentFolder && parentFolder instanceof TFolder) {
-				folderSet.add(parentFolder);
-			}
-		}
-
-		return Array.from(folderSet);
-	}
+	// ------------------------------------------------------------
+	// Helpers
+	// ------------------------------------------------------------
 
 	private createHeader(): void {
-		this.containerEl.createEl("h2", { text: "Settings for Whisper." });
+		this.containerEl.createEl("h2", { text: "Whisper Plugin Settings" });
 	}
 
 	private createTextSetting(
@@ -67,6 +89,31 @@ export class WhisperSettingsTab extends PluginSettingTab {
 			);
 	}
 
+	// ------------------------------------------------------------
+	// Backend
+	// ------------------------------------------------------------
+
+	private createBackendSelector(): void {
+		new Setting(this.containerEl)
+			.setName("Backend")
+			.setDesc("Choose between Remote Whisper API or Local whisper.cpp")
+			.addDropdown((dropdown) => {
+				dropdown
+					.addOption("remote", "Remote Whisper API")
+					.addOption("local", "Local whisper.cpp")
+					.setValue(this.plugin.settings.backend)
+					.onChange(async (value) => {
+						this.plugin.settings.backend = value as "remote" | "local";
+						await this.settingsManager.saveSettings(this.plugin.settings);
+						this.display(); // refresh UI
+					});
+			});
+	}
+
+	// ------------------------------------------------------------
+	// Remote Settings
+	// ------------------------------------------------------------
+
 	private createApiKeySetting(): void {
 		this.createTextSetting(
 			"API Key",
@@ -83,8 +130,8 @@ export class WhisperSettingsTab extends PluginSettingTab {
 	private createApiUrlSetting(): void {
 		this.createTextSetting(
 			"API URL",
-			"Specify the endpoint that will be used to make requests to",
-			"https://api.your-custom-url.com",
+			"Specify the Whisper API endpoint",
+			"https://api.openai.com/v1/audio/transcriptions",
 			this.plugin.settings.apiUrl,
 			async (value) => {
 				this.plugin.settings.apiUrl = value;
@@ -96,7 +143,7 @@ export class WhisperSettingsTab extends PluginSettingTab {
 	private createModelSetting(): void {
 		this.createTextSetting(
 			"Model",
-			"Specify the machine learning model to use for generating text",
+			"Remote Whisper model name",
 			"whisper-1",
 			this.plugin.settings.model,
 			async (value) => {
@@ -109,8 +156,8 @@ export class WhisperSettingsTab extends PluginSettingTab {
 	private createPromptSetting(): void {
 		this.createTextSetting(
 			"Prompt",
-			"Optional: Add words with their correct spellings to help with transcription. Make sure it matches the chosen language.",
-			"Example: ZyntriQix, Digique Plus, CynapseFive",
+			"Optional: Add vocabulary to improve transcription accuracy",
+			"Example: Digique Plus, ZyntriQix",
 			this.plugin.settings.prompt,
 			async (value) => {
 				this.plugin.settings.prompt = value;
@@ -122,7 +169,7 @@ export class WhisperSettingsTab extends PluginSettingTab {
 	private createLanguageSetting(): void {
 		this.createTextSetting(
 			"Language",
-			"Specify the language of the message being whispered",
+			"Language code of the audio",
 			"en",
 			this.plugin.settings.language,
 			async (value) => {
@@ -132,23 +179,64 @@ export class WhisperSettingsTab extends PluginSettingTab {
 		);
 	}
 
+	// ------------------------------------------------------------
+	// Local Whisper Settings
+	// ------------------------------------------------------------
+
+	private createLocalModelPathSetting(): void {
+		this.createTextSetting(
+			"Local Whisper Model (.bin / .gguf)",
+			"Path to your whisper.cpp model file",
+			"/Users/you/Library/Application Support/whisper/models/ggml-base.en.bin",
+			this.plugin.settings.localModelPath,
+			async (value) => {
+				this.plugin.settings.localModelPath = value;
+				await this.settingsManager.saveSettings(this.plugin.settings);
+			}
+		);
+	}
+
+	private createLocalBinaryPathSetting(): void {
+		this.createTextSetting(
+			"whisper-cli binary",
+			"Path or name of whisper-cli",
+			"whisper-cli",
+			this.plugin.settings.localWhisperBinaryPath,
+			async (value) => {
+				this.plugin.settings.localWhisperBinaryPath = value;
+				await this.settingsManager.saveSettings(this.plugin.settings);
+			}
+		);
+	}
+
+	private createFFmpegPathSetting(): void {
+		this.createTextSetting(
+			"ffmpeg binary",
+			"Path or name of ffmpeg",
+			"ffmpeg",
+			this.plugin.settings.ffmpegPath,
+			async (value) => {
+				this.plugin.settings.ffmpegPath = value;
+				await this.settingsManager.saveSettings(this.plugin.settings);
+			}
+		);
+	}
+
+	// ------------------------------------------------------------
+	// Save Audio
+	// ------------------------------------------------------------
+
 	private createSaveAudioFileToggleSetting(): void {
 		new Setting(this.containerEl)
 			.setName("Save recording")
-			.setDesc(
-				"Turn on to save the audio file after sending it to the Whisper API"
-			)
+			.setDesc("Save the raw audio file into your vault")
 			.addToggle((toggle) =>
 				toggle
 					.setValue(this.plugin.settings.saveAudioFile)
 					.onChange(async (value) => {
 						this.plugin.settings.saveAudioFile = value;
-						if (!value) {
-							this.plugin.settings.saveAudioFilePath = "";
-						}
-						await this.settingsManager.saveSettings(
-							this.plugin.settings
-						);
+						if (!value) this.plugin.settings.saveAudioFilePath = "";
+						await this.settingsManager.saveSettings(this.plugin.settings);
 						this.saveAudioFileInput.setDisabled(!value);
 					})
 			);
@@ -157,83 +245,71 @@ export class WhisperSettingsTab extends PluginSettingTab {
 	private createSaveAudioFilePathSetting(): void {
 		this.saveAudioFileInput = new Setting(this.containerEl)
 			.setName("Recordings folder")
-			.setDesc(
-				"Specify the path in the vault where to save the audio files"
-			)
+			.setDesc("Vault folder for saved audio")
 			.addText((text) =>
 				text
-					.setPlaceholder("Example: folder/audio")
+					.setPlaceholder("Example: audio")
 					.setValue(this.plugin.settings.saveAudioFilePath)
 					.onChange(async (value) => {
 						this.plugin.settings.saveAudioFilePath = value;
-						await this.settingsManager.saveSettings(
-							this.plugin.settings
-						);
+						await this.settingsManager.saveSettings(this.plugin.settings);
 					})
 			)
 			.setDisabled(!this.plugin.settings.saveAudioFile);
 	}
 
+	// ------------------------------------------------------------
+	// Save Transcriptions
+	// ------------------------------------------------------------
+
 	private createNewFileToggleSetting(): void {
 		new Setting(this.containerEl)
 			.setName("Save transcription")
-			.setDesc(
-				"Turn on to create a new file for each recording, or leave off to add transcriptions at your cursor"
-			)
-			.addToggle((toggle) => {
+			.setDesc("Create a new note for each transcript")
+			.addToggle((toggle) =>
 				toggle
 					.setValue(this.plugin.settings.createNewFileAfterRecording)
 					.onChange(async (value) => {
-						this.plugin.settings.createNewFileAfterRecording =
-							value;
+						this.plugin.settings.createNewFileAfterRecording = value;
 						if (!value) {
-							this.plugin.settings.createNewFileAfterRecordingPath =
-								"";
+							this.plugin.settings.createNewFileAfterRecordingPath = "";
 						}
-						await this.settingsManager.saveSettings(
-							this.plugin.settings
-						);
+						await this.settingsManager.saveSettings(this.plugin.settings);
 						this.createNewFileInput.setDisabled(!value);
-					});
-			});
+					})
+			);
 	}
 
 	private createNewFilePathSetting(): void {
 		this.createNewFileInput = new Setting(this.containerEl)
 			.setName("Transcriptions folder")
-			.setDesc(
-				"Specify the path in the vault where to save the transcription files"
-			)
-			.addText((text) => {
-				text.setPlaceholder("Example: folder/note")
-					.setValue(
-						this.plugin.settings.createNewFileAfterRecordingPath
-					)
+			.setDesc("Vault folder for new transcript notes")
+			.addText((text) =>
+				text
+					.setPlaceholder("Example: notes/transcriptions")
+					.setValue(this.plugin.settings.createNewFileAfterRecordingPath)
 					.onChange(async (value) => {
-						this.plugin.settings.createNewFileAfterRecordingPath =
-							value;
-						await this.settingsManager.saveSettings(
-							this.plugin.settings
-						);
-					});
-			});
+						this.plugin.settings.createNewFileAfterRecordingPath = value;
+						await this.settingsManager.saveSettings(this.plugin.settings);
+					})
+			);
 	}
+
+	// ------------------------------------------------------------
+	// Debug Mode
+	// ------------------------------------------------------------
 
 	private createDebugModeToggleSetting(): void {
 		new Setting(this.containerEl)
 			.setName("Debug Mode")
-			.setDesc(
-				"Turn on to increase the plugin's verbosity for troubleshooting."
-			)
-			.addToggle((toggle) => {
+			.setDesc("Enable verbose plugin logs for troubleshooting")
+			.addToggle((toggle) =>
 				toggle
 					.setValue(this.plugin.settings.debugMode)
 					.onChange(async (value) => {
 						this.plugin.settings.debugMode = value;
-						await this.settingsManager.saveSettings(
-							this.plugin.settings
-						);
-					});
-			});
+						await this.settingsManager.saveSettings(this.plugin.settings);
+					})
+			);
 	}
 }
