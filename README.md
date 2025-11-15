@@ -27,25 +27,6 @@ You can now choose between:
 * **Remote transcription using OpenAI Whisper API**, or
 * **Local transcription using whisper.cpp** (fast, private, offline)
 
----
-
-# 🔧 **About This Fork**
-
-This fork introduces the following features:
-
-### 🏎️ **Local Whisper.cpp Backend**
-
-* Fully offline transcription via `whisper-cli`
-* GPU acceleration through Metal on Apple Silicon
-* Supports ggml/gguf Whisper models (`tiny`, `base`, `small`, `medium`, `large-v3`)
-
-### 🎚️ **Backend Selector (Remote ↔ Local)**
-
-Switch between:
-
-* **Remote Whisper API**
-* **Local whisper.cpp**
-
 in Settings without changing how you use the plugin.
 
 ### 🔩 **New Local Backend Settings**
@@ -61,7 +42,7 @@ Recording, uploading, creating notes, inserting transcriptions, and file-saving 
 
 ---
 
-# 🚀 **Getting Started**
+## 🚀 **Getting Started**
 
 ## Installing the Plugin (Fork)
 
