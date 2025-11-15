@@ -1,3 +1,27 @@
+## 🔧 About This Fork (Local Whisper.cpp Support)
+
+This fork of the original **Whisper Recorder** plugin by **Nik Danilov** introduces
+a fully local, offline transcription backend powered by **whisper.cpp** with
+Metal GPU acceleration on macOS. The goal is to retain the original plugin’s UX
+while allowing users to choose between:
+
+- **Remote Whisper API (OpenAI)**
+- **Local whisper.cpp backend** (fast, private, offline)
+
+### Key Enhancements in This Fork
+- Added a **LocalWhisperBackend** that runs whisper.cpp via `whisper-cli`
+- Automatic **audio normalization** using `ffmpeg` (webm/m4a → 16kHz mono WAV)
+- Added **backend selector** in Settings: Remote vs Local
+- New settings for:
+  - Local model path (`ggml-base.en.bin`, `ggml-small.en.gguf`, etc.)
+  - Local whisper-cli binary path
+  - ffmpeg binary path
+- Refactored `AudioHandler` to support dual backends while keeping UX identical
+- Improved error handling, temporary file management, and TypeScript correctness
+- Added clear licensing and attribution notes for fork modifications
+
+The remainder of this README is preserved from the original plugin for reference.
+
 # Speech-to-text in Obsidian using OpenAI Whisper 🗣️📝
 
 Obsidian Whisper is a plugin that effortlessly turns your speech into written notes. Just speak your mind, and let [Whisper](https://openai.com/research/whisper) from OpenAI do the rest!
