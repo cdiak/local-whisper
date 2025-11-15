@@ -1,115 +1,97 @@
-## 🔧 About This Fork (Local Whisper.cpp Support)
+# Whisper for Obsidian — Remote and Local Transcription
 
-This fork of the original **Whisper Recorder** plugin by **Nik Danilov** introduces
-a fully local, offline transcription backend powered by **whisper.cpp** with
-Metal GPU acceleration on macOS. The goal is to retain the original plugin’s UX
-while allowing users to choose between:
+This repository is a fork of the original **Whisper Recorder** plugin by **Nik Danilov**.
+The fork preserves the original functionality while adding a complete **local transcription backend** powered by **whisper.cpp** with Metal acceleration on macOS.
 
-- **Remote Whisper API (OpenAI)**
-- **Local whisper.cpp backend** (fast, private, offline)
+The goal is to maintain the same user interface while allowing users to choose between:
 
-### Key Enhancements in This Fork
-- Added a **LocalWhisperBackend** that runs whisper.cpp via `whisper-cli`
-- Automatic **audio normalization** using `ffmpeg` (webm/m4a → 16kHz mono WAV)
-- Added **backend selector** in Settings: Remote vs Local
-- New settings for:
-  - Local model path (`ggml-base.en.bin`, `ggml-small.en.gguf`, etc.)
-  - Local whisper-cli binary path
-  - ffmpeg binary path
-- Refactored `AudioHandler` to support dual backends while keeping UX identical
-- Improved error handling, temporary file management, and TypeScript correctness
-- Added clear licensing and attribution notes for fork modifications
+* **Remote transcription using OpenAI’s Whisper API**, or
+* **Local transcription using whisper.cpp** (offline, private, GPU-accelerated)
+
+Both backends share the same recording features, note-creation logic, and command palette actions.
 
 ---
 
-You can now choose between:
+## 1. Overview of Fork Improvements
 
-* **Remote transcription using OpenAI Whisper API**, or
-* **Local transcription using whisper.cpp** (fast, private, offline)
+This fork adds:
 
-in Settings without changing how you use the plugin.
+### Local whisper.cpp backend
 
-### 🔩 **New Local Backend Settings**
+* Integration with `whisper-cli`
+* Metal GPU acceleration on Apple Silicon
+* Support for ggml/gguf Whisper models
 
-* **Local model path:** path to `ggml`/`gguf` Whisper model
-* **whisper-cli binary path**
-* **ffmpeg binary path**
-* Automatic WAV normalization from webm/m4a → 16 kHz PCM
+### Backend selector
 
-### 🔄 **Unified UX**
+Choose between:
 
-Recording, uploading, creating notes, inserting transcriptions, and file-saving behavior all remain identical regardless of backend.
+* OpenAI Whisper API (remote)
+* Local whisper.cpp (offline)
+
+### New settings for local mode
+
+* Local model path
+* whisper-cli binary path
+* ffmpeg binary path
+
+### Refactors
+
+* Unified `AudioHandler` for dual backends
+* Improved error handling and temp file management
+* Full TypeScript corrections and improved reliability
+* Licensing and attribution notes for fork modifications
+
+The rest of the plugin behaves the same as the original project.
 
 ---
 
-## 🚀 **Getting Started**
+## 2. Installing This Fork
 
-## Installing the Plugin (Fork)
+To install this plugin manually:
 
-Clone or download this repository into:
+1. Clone or download this repository into:
 
-```
-<your-vault>/.obsidian/plugins/local-whisper
-```
+   ```
+   <vault>/.obsidian/plugins/local-whisper
+   ```
+2. Reload community plugins in Obsidian.
+3. Open **Settings → Local Whisper** and configure your backend.
 
-Or use a symlink for development:
+You can also symlink during development:
 
 ```bash
 cd <vault>/.obsidian/plugins
 ln -s /Users/<you>/Development/Projects/local-whisper local-whisper
 ```
 
-Reload plugins inside Obsidian.
-
 ---
 
-# 🎛️ **Installing a Local Whisper Model (whisper.cpp)**
+## 3. Installing a Local Whisper Model (whisper.cpp)
 
-To use the **Local whisper.cpp backend**, you must install a Whisper model in the
-correct format (`ggml` or `gguf`). PyTorch `.pt` models will not work.
+Local transcription requires a Whisper model in **ggml** or **gguf** format
+(*not* the PyTorch `.pt` models used by OpenAI’s Python Whisper).
 
-Here is the exact macOS setup we used in development:
+### 3.1 Create a dedicated model directory
 
----
-
-## 1. Create a Stable Model Directory (No Spaces in Path)
+Avoid paths with spaces:
 
 ```bash
 mkdir -p ~/models/whisper
 ```
 
----
-
-## 2. Download a Model Using whisper.cpp’s Script (Recommended)
-
-Clone whisper.cpp:
+### 3.2 Download a model using whisper.cpp’s script (recommended)
 
 ```bash
 git clone https://github.com/ggml-org/whisper.cpp.git
 cd whisper.cpp
-```
-
-Download a model:
-
-```bash
 sh ./models/download-ggml-model.sh base.en
-```
-
-Move it into your stable directory:
-
-```bash
 mv ./models/ggml-base.en.bin ~/models/whisper/ggml-base.en.bin
 ```
 
-Verify (size should be ~140 MB):
+You should see a file roughly **140 MB** in size.
 
-```bash
-ls -lh ~/models/whisper
-```
-
----
-
-## 3. Alternate Method: HuggingFace Direct Download
+### 3.3 Alternative: HuggingFace direct download
 
 ```bash
 cd ~/models/whisper
@@ -117,185 +99,100 @@ curl -L -o ggml-base.en.bin \
   https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-base.en.bin?download=1
 ```
 
-**If the file is only a few KB, the download failed.**
-Retry or use the whisper.cpp script.
+If the result is only a few kilobytes, the download failed—use the script method above.
 
----
-
-## 4. Configure the Plugin
+### 3.4 Configure model + binaries in the plugin
 
 In **Settings → Local Whisper Backend**:
 
-#### Local Whisper Model Path
+**Local Whisper Model Path**
 
 ```
 /Users/<you>/models/whisper/ggml-base.en.bin
 ```
 
-#### whisper-cli Binary
+**whisper-cli binary**
 
 ```
 /opt/homebrew/bin/whisper-cli
 ```
 
-(Install via Homebrew:
-`brew install whisper-cpp`)
-
-#### ffmpeg Binary
+**ffmpeg binary**
 
 ```
 /opt/homebrew/bin/ffmpeg
 ```
 
-(Install via Homebrew:
-`brew install ffmpeg`)
+(Install with `brew install whisper-cpp` and `brew install ffmpeg`.)
 
----
+### 3.5 Common issues
 
-## 5. Common Setup Pitfalls
+* Models must be **ggml/gguf**, not `.pt`
+* Paths containing spaces may fail under Electron’s process model
+* Models must be the correct size (e.g., ~140 MB for base.en)
+* MediaRecorder outputs webm/m4a → `ffmpeg` converts to 16 kHz WAV
+* Always verify `whisper-cli` works in Terminal before using the plugin
 
-* **Model must be ggml/gguf**, not PyTorch `.pt`
-* **Avoid spaces in paths** (whisper-cli fails inside Electron execFile)
-* **Model must be large** (e.g., 140 MB for base.en)
-* **MediaRecorder outputs webm/m4a**, not WAV → ffmpeg needed
-* **Verify whisper-cli runs from Terminal** before testing in Obsidian
-
----
-
-## 6. Test whisper-cli Manually
+### 3.6 Testing whisper-cli manually
 
 ```bash
 whisper-cli \
   -m ~/models/whisper/ggml-base.en.bin \
-  -f <path-to-wav-file> \
+  -f <path-to-wav> \
   -otxt
 ```
 
-If this works, the plugin will work.
+If this succeeds, the local backend is correctly installed.
 
 ---
 
-## 7. Try Other Models
+## 4. Using the Plugin
 
-You can use:
+### Start recording
 
-* `ggml-small.en.gguf`
-* `ggml-medium.en.gguf`
-* `ggml-large-v3.gguf`
+Use the ribbon icon or run the command **Start/Stop Recording**.
+Press Stop to transcribe and save.
 
-Place them in `~/models/whisper` and update your Settings path.
+### Upload existing files
 
----
+Run **Upload Audio File** from the command palette.
 
-Original plugin © 2023 by **Nik Danilov**.
-Local backend, refactor, and enhancements © 2025 **Christopher Diak**.
+### Note creation
 
----
+Depending on settings:
 
-# ⚒️ Manual Installation (Plugin Files)
+* The plugin creates a new note and embeds the audio, or
+* Inserts transcript text at the cursor position in the active note.
 
-Download:
-
-* `manifest.json`
-* `main.js`
-* `styles.css`
-
-Place them into:
-
-```
-<your-vault>/.obsidian/plugins/local-whisper/
-```
-
-Reload plugins.
+The experience is identical for local and remote backends.
 
 ---
 
-* Whisper Recorder by **Nik Danilov**
+## 5. Remote Whisper API Settings (Original Functionality)
+
+* **API Key**: Required for OpenAI’s Whisper API
+* **API URL**: Custom endpoint, defaults to OpenAI
+* **Model**: Whisper model name for API requests
+* **Language**: Language hint for remote transcription
+* **Save recording**: Save audio files to a vault folder
+* **Save transcription**: Save each result to a new file
+
+These features are unchanged from the original plugin.
+
+---
+
+## 6. Attribution
+
+* Original Whisper Recorder plugin © 2023 **Nik Danilov**
 * whisper.cpp by **ggerganov**
-* Local backend architecture and refactor by **Christopher Diak**
-
-The remainder of this README is preserved from the original plugin for reference.
-
-# Speech-to-text in Obsidian using OpenAI Whisper 🗣️📝
-
-Obsidian Whisper is a plugin that effortlessly turns your speech into written notes. Just speak your mind, and let [Whisper](https://openai.com/research/whisper) from OpenAI do the rest!
-
-## 🚀 Getting Started
-
-1. This plugin can be installed from "Community Plugins" inside Obsidian.
-2. For this plugin to work, you will need to provide your OpenAI API key. See the Settings section of this README file for more information.
-
-## 🎯 How to Use
-
-### Access Recording Controls
-
-Click on the ribbon button to open the recording controls interface.
-
-### Record Audio
-
-Use the "Start" button to begin recording. You can pause and resume the recording using the "Pause/Resume" button. Click the "Stop" button once you're done. After stopping the recording, the plugin will automatically transcribe the audio and create a new note with the transcribed content and linked audio file in the specified folder.
-
-> You can quickly start or stop recording using the `Alt + Q` shortcut.
-
-### Upload Existing Audio File
-
-You can also transcribe an existing audio file:
-
--   Open the command palette with `Ctrl/Cmd + P`.
--   Search for "Upload Audio File" and select it.
--   A file dialog will appear. Choose the audio file you want to transcribe.
--   The plugin will transcribe the selected file and create a new note with the content and linked audio file in the specified folder.
-
-### Command Palette for Quick Actions
-
-Both "Start/Stop recording" and "Upload Audio File" actions can also be accessed quickly through the command palette.
-
-> For further explanation of using this plugin, check out the article ["Speech-to-text in Obsidian using OpenAI Whisper Service"](https://tfthacker.medium.com/speech-to-text-in-obsidian-using-openai-whisper-service-7b2843bf8d64) by [TfT Hacker](https://twitter.com/tfthacker)
-
-## ⚙️ Settings
-
--   API Key: Input your OpenAI API key to unlock the advanced transcription capabilities of the Whisper API. You can obtain a key from OpenAI at this [link](https://platform.openai.com/overview). If you are not familiar with the concept of an API key, you can learn more about this at this [link](https://tfthacker.medium.com/how-to-get-your-own-api-key-for-using-openai-chatgpt-in-obsidian-41b7dd71f8d3).
-
--   API URL: Specify the endpoint that will be used to make requests to the Whisper API. This should not be changed unless you have a specific reason to use a different endpoint.
-
--   Model: Choose the machine learning model to use for generating text transcriptions. This should not be changed unless you have a specific reason to use a different model.
-
--   Language: Specify the language of the message being whispered. For a list of languages and codes, consult this [link](https://github.com/openai/whisper/blob/main/whisper/tokenizer.py).
-
--   Save recording: Toggle this option to save the audio file after sending it to the Whisper API. When enabled, you can specify the path in the vault where the audio files should be saved.
-
--   Recordings folder: Specify the path in the vault where to save the audio files. Example: `folder/audio`. This option is only available if "Save recording" is enabled.
-
--   Save transcription: Toggle this option to create a new file for each recording, or leave it off to add transcriptions at your cursor. When enabled, you can specify the path in the vault where the transcriptions should be saved.
-
--   Transcriptions folder: Specify the path in the vault where to save the transcription files. Example: `folder/note`. This option is only available if "Save transcription" is enabled.
-
-## 🤝 Contributing
-
-We welcome and appreciate contributions, issue reports, and feature requests from the community! Feel free to visit the [Issues](https://github.com/nikdanilov/whisper-obsidian-plugin/issues) page to share your thoughts and suggestions.
-
-## 💬 Whisper API
-
--   For additional information, including limitations and pricing related to using the Whisper API, check out the [OpenAI Whisper FAQ](https://help.openai.com/en/articles/7031512-whisper-api-faq)
--   For a high-level overview of the Whisper API, check out this information from [OpenAI](https://openai.com/research/whisper)
-
-## ⚒️ Manual Installation
-
-If you want to install this plugin manually, use the following steps:
-
-1. Download `manifest.json`, `main.js`, `styles.css` from the [GitHub repository](https://github.com/nikdanilov/whisper-obsidian-plugin/releases) into the `plugins/whisper` folder within your Obsidian vault.
-2. Click on `Reload plugins` button inside `Settings > Community plugins`.
-3. Locate the "Whisper" plugin and enable it.
-4. In the plugin settings include your OpenAI API key.
-
-## 🤩 Say Thank You
-
-Are you finding value in this plugin? Great! You can fuel my coding sessions and share your appreciation by buying me a coffee [here](https://ko-fi.com/nikdanilov).
-
-Help others discover the magic of the Obsidian Whisper Plugin! I'd be thrilled if you could share your experiences on Twitter, Reddit, or your preferred social media platform!
-
-You can find me on Twitter [@nikdanilov\_](https://twitter.com/nikdanilov_).
-
-[<img style="float:left" src="https://user-images.githubusercontent.com/14358394/115450238-f39e8100-a21b-11eb-89d0-fa4b82cdbce8.png" width="200">](https://ko-fi.com/nikdanilov)
+* Local backend architecture, refactoring, TypeScript updates, and enhancements © 2025 **Christopher Diak**, released under MIT
+* All code in this fork remains MIT-licensed, preserving all rights granted by the original license
 
 ---
+
+## 7. License
+
+This project is released under the **MIT License**.
+The original license and copyright
+for the upstream plugin are retained verbatim.
+A supplemental notice declares the 2025 modifications and affirms that all rights granted in the MIT License apply equally to the original and modified versions.
